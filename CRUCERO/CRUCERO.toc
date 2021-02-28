@@ -1,8 +1,0 @@
-\beamer@sectionintoc {1}{Introducción}{3}{0}{1}
-\beamer@sectionintoc {2}{Cruceros}{16}{0}{2}
-\beamer@sectionintoc {3}{Compañías}{18}{0}{3}
-\beamer@sectionintoc {4}{Rutas}{26}{0}{4}
-\beamer@sectionintoc {5}{Procedencia pasajeros}{34}{0}{5}
-\beamer@sectionintoc {6}{Evolución }{35}{0}{6}
-\beamer@sectionintoc {7}{Cruceros más grandes del mundo}{38}{0}{7}
-\beamer@sectionintoc {8}{Reparaciones}{44}{0}{8}
