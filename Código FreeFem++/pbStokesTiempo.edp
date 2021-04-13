@@ -1,0 +1,126 @@
+//Problema de Stokes: 2D-Tiempo
+
+//Datos
+real rho=998.2; // Densidad del agua (kg/m^3) a 20ºC.
+real mu=1.102e-3; // Coeficiente de viscosidad dinámica del agua a 20ºC(N*s/m^2).
+real nu=mu/rho; //Viscosidad cinemática del agua (m^2/s).
+real pInf=0; //Presión de referencia
+//func f=0; //Estamos considerando a las fuerzas externas 0
+nu=0.001;
+
+// Parámetros del sistema
+real magnitudVeloc=0.1; // Magnitud de la velocidad de entrada del fluido (por ejemplo, m/s)
+real L=1; // Longitud característica (metros).
+real V=magnitudVeloc; // Velocidad característica
+real Re=V*L/nu; // Número de Reynodlds
+
+cout << "=======================================================================" << endl;
+cout << "Ejecutando experimento con:  Re=" << Re
+     << "  (V=" << V << ", L=" << L << ", nu=" << nu << ")" << endl;
+cout << "=======================================================================" << endl;
+
+//Definimos el dominio (cuadrado)
+//Malla y espacios de elementos finitos
+int nx = 20;
+mesh Th=square(nx,nx);
+int inferior=1, derecha=2, superior=3, izquierda=4;
+plot(Th);
+
+//Definimos los espacios y las funciones de Elementos finitos Taylor-Hood
+fespace Vh(Th, P2); // Espacio para velocidad
+fespace Qh(Th, P1);// Espacio para presión
+
+Vh u, v; // Incógnita: velocidad (u,v)
+Qh p;    // Incógnita: presión
+Vh ub, vb; //Funciones test
+Qh pb;     // Función test: presión
+Vh u0,v0; // Solución (campo de velocidades) en la etapa anterior
+
+
+fespace VortSpace(Th,P1); // Espacio donde se va a calcular la vorticidad
+VortSpace vort; // Variable vorticidad
+
+//Esquema en tiempo (Euler implícito)
+real T0=0, T1=200; //Intervalo de tiempo [T0,T1]
+int numiter=100; //Número de iteraciones en tiempo que se van a realizar
+real dt=(T1-T0)/numiter; //Paso de tiempo
+real frec=1.0/dt; //Frecuencia
+int iter; //Contador de iteraciones
+real t; //Instante actual
+
+//Condiciones iniciales
+func uInicial=0; //Condición Inicial para u
+func vInicial=0; //Condición Inicial para v
+
+//Condiciones de contorno de entrada
+func real inVelocity(real t){
+  //return magnitudVeloc;
+  return sin(magnitudVeloc*t);
+}
+
+u0=uInicial; // iniciamos u
+v0=vInicial ;//iniciamos v
+
+//Definimos el problema variacional
+
+macro grad(u) [dx(u),dy(u)] //EOM
+macro div(u,v) (dx(u)+dy(v)) //EOM
+
+//vector de incógnitas y vector de funciones test
+problem Stokes([u,v,p],[ub,vb,pb]) =
+//Forma bilineal(primer miembro)
+  int2d(Th)(u*ub/dt+v*vb/dt)
+  +int2d(Th)(nu*grad(u)'*grad(ub))
+  +int2d(Th)( nu*grad(v)'*grad(vb))
+  -int2d(Th)( div(ub,vb)*p)
+  +int2d(Th)(div(u,v)*pb)
+  +int2d(Th)(1.e-10*p*pb) //Penalización de p(unicidad de solución)
+//Condiciones de contorno Dirichlet
+  +on(izquierda, inferior, derecha,u=0,v=0)//C.contorno
+  +on(superior,u=inVelocity(t), v=0);
+
+  //plot([u,v]);
+
+  //Bucle de las iteraciones en tiempo
+  for(iter=0;iter<numiter; iter++)
+  {
+    t=T0+(iter+1)*dt;
+    cout<<"Iterac."<<iter<<",t="<<t<< endl;
+
+
+  //Resolvemos el problema en la etapa de tiempo actual
+
+  Stokes;
+
+  //Adaptar la malla, según la magnitud del campo de velocidades
+  Th=adaptmesh(Th,[u,v],hmin=5./100);
+
+  //plot(Th);
+
+  //Ajustamos la presión
+  p=p*rho; //Re-escalamos la presión
+  p=p+pInf; //Sumamos la presión de referencia
+
+  // Calculamos la vorticidad
+  //
+  vort = dy(u) - dx(v);
+
+  // Preparamos la siguiente iteración
+  //
+  u0=u;
+  v0=v;
+
+  //Graficamos
+  plot(Th, [u,v], value=1,wait=1);
+  //   plot(Th, p, fill=1, value=1);
+  //plot(Th, vort, fill=1, value=1);
+    // Save to VTK (for high quality plottin)
+    load "iovtk";
+    string filename = "pbStokesTiempo" + iter + ".vtk";
+    savevtk(filename, Th, [u,v,0], p, vort,
+	    dataname="Velocity Pressure Vorticity");
+
+
+
+
+  }
